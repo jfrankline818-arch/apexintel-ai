@@ -1,0 +1,6 @@
+Flask
+requests
+beautifulsoup4
+pandas
+APScheduler
+psycopg2-binary
