@@ -12,7 +12,7 @@ app = Flask(__name__)
 app.secret_key = "super_secret_key_change_in_production"
 
 # CONFIGURATIONS
-PAYPAL_ME_LINK = "https://www.paypal.com/ncp/payment/PYVWWAPTKXHEW" 
+PAYPAL_ME_LINK = "https://www.paypal.com/ncp/payment/PYVWWAPTKXHEW"
 TRIAL_DAYS = 30
 SUBSCRIPTION_FEE = 70
 HELP_EMAIL = "aienvironmentarea@gmail.com"
@@ -20,15 +20,17 @@ HELP_EMAIL = "aienvironmentarea@gmail.com"
 # SQLite database path setup
 DATABASE_PATH = "apexintel_db.sqlite"
 
+
 def get_db_connection():
     conn = sqlite3.connect(DATABASE_PATH)
     conn.row_factory = sqlite3.Row
     return conn
 
+
 def init_db():
     conn = get_db_connection()
     cursor = conn.cursor()
-    
+
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS license (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -97,30 +99,32 @@ def init_db():
     cursor.close()
     conn.close()
 
+
 init_db()
+
 
 def get_user_payment_status(email):
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute("SELECT has_paid, install_date, last_paid_date FROM users WHERE email = ?", (email,))
     row = cursor.fetchone()
-    
+
     if not row:
         cursor.close()
         conn.close()
         return 0, TRIAL_DAYS
-    
+
     has_paid = row[0]
     install_date_str = row[1]
     last_paid_date_str = row[2]
-    
+
     now = datetime.now()
-    
+
     if has_paid and last_paid_date_str:
         try:
             paid_dt = datetime.fromisoformat(last_paid_date_str)
             days_since_payment = (now - paid_dt).days
-            
+
             if days_since_payment < 30:
                 days_remaining = 30 - days_since_payment
                 cursor.close()
@@ -142,10 +146,10 @@ def get_user_payment_status(email):
         cursor.close()
         conn.close()
         return 0, TRIAL_DAYS
-        
+
     cursor.close()
     conn.close()
-        
+
     try:
         install_dt = datetime.fromisoformat(install_date_str)
         days_passed = (now - install_dt).days
@@ -153,6 +157,7 @@ def get_user_payment_status(email):
         return 0, days_remaining
     except Exception:
         return 0, TRIAL_DAYS
+
 
 def discover_company_urls(query):
     query_clean = query.strip().lower()
@@ -187,6 +192,7 @@ def discover_company_urls(query):
             continue
     return valid_urls
 
+
 def run_competitor_intelligence(companies_input):
     company_list = [c.strip() for c in companies_input.split(",") if c.strip()]
     master_data = []
@@ -213,7 +219,8 @@ def run_competitor_intelligence(companies_input):
                 if response.status_code != 200:
                     continue
                 soup = BeautifulSoup(response.text, 'html.parser')
-                for element in soup.find_all(['h3', 'h4', 'span', 'a', 'div', 'p'], class_=lambda x: x and any(term in str(x).lower() for term in ['title', 'name', 'price', 'card', 'item'])):
+                for element in soup.find_all(['h3', 'h4', 'span', 'a', 'div', 'p'], class_=lambda x: x and any(
+                        term in str(x).lower() for term in ['title', 'name', 'price', 'card', 'item'])):
                     text = element.get_text().strip()
                     if any(symbol in text for symbol in ['$', 'KSh', 'KES', 'USD', 'EUR', 'GBP']) and len(text) < 50:
                         if text not in products_found:
@@ -250,6 +257,7 @@ def run_competitor_intelligence(companies_input):
     df = pd.DataFrame(master_data)
     return df.to_html(classes='table table-hover align-middle mb-0', index=False, escape=False)
 
+
 def run_special_item_search(item_query, area_query):
     query_clean = item_query.strip()
     area_clean = area_query.strip()
@@ -261,7 +269,8 @@ def run_special_item_search(item_query, area_query):
         response = requests.get(target_url, headers=headers, timeout=6)
         if response.status_code == 200:
             soup = BeautifulSoup(response.text, 'html.parser')
-            for card in soup.find_all(['div', 'article', 'li'], class_=lambda x: x and any(term in str(x).lower() for term in ['card', 'item'])):
+            for card in soup.find_all(['div', 'article', 'li'],
+                                      class_=lambda x: x and any(term in str(x).lower() for term in ['card', 'item'])):
                 title_elem = card.find(['h3', 'h4', 'span', 'a'])
                 title_text = title_elem.get_text().strip() if title_elem else f"{query_clean.capitalize()} in {area_clean.capitalize()}"
                 master_data.append({
@@ -286,6 +295,7 @@ def run_special_item_search(item_query, area_query):
     df = pd.DataFrame(master_data)
     return df.to_html(classes='table table-hover align-middle mb-0', index=False, escape=False)
 
+
 def run_nearby_businesses_scan(location_query):
     loc_clean = location_query.strip()
     target_url = f"https://jiji.co.ke/search?query={loc_clean.replace(' ', '+')}"
@@ -296,7 +306,8 @@ def run_nearby_businesses_scan(location_query):
         response = requests.get(target_url, headers=headers, timeout=6)
         if response.status_code == 200:
             soup = BeautifulSoup(response.text, 'html.parser')
-            for card in soup.find_all(['div', 'article', 'li'], class_=lambda x: x and any(term in str(x).lower() for term in ['card', 'item'])):
+            for card in soup.find_all(['div', 'article', 'li'],
+                                      class_=lambda x: x and any(term in str(x).lower() for term in ['card', 'item'])):
                 title_elem = card.find(['h3', 'h4', 'span', 'a'])
                 title_text = title_elem.get_text().strip() if title_elem else f"Local Merchant"
                 master_data.append({
@@ -321,6 +332,7 @@ def run_nearby_businesses_scan(location_query):
     df = pd.DataFrame(master_data)
     return df.to_html(classes='table table-hover align-middle mb-0', index=False, escape=False)
 
+
 def background_24hr_refresh_job():
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -338,10 +350,10 @@ def background_24hr_refresh_job():
     cursor.close()
     conn.close()
 
+
 scheduler = BackgroundScheduler()
 scheduler.add_job(func=background_24hr_refresh_job, trigger="interval", hours=24)
 scheduler.start()
-
 
 # --- STICKER HTML SNIPPET ---
 STICKER_POPUP_HTML = """
@@ -418,20 +430,21 @@ def index():
         return redirect(url_for("login"))
     return redirect(url_for("dashboard"))
 
+
 @app.route("/login", methods=["GET", "POST"])
 def login():
     error = None
     if request.method == "POST":
         email = request.form.get("email", "").strip().lower()
         password = request.form.get("password", "")
-        
+
         conn = get_db_connection()
         cursor = conn.cursor()
         cursor.execute("SELECT password FROM users WHERE email = ?", (email,))
         row = cursor.fetchone()
         cursor.close()
         conn.close()
-        
+
         if row and row[0] == password:
             session["user_email"] = email
             return redirect(url_for("dashboard"))
@@ -439,13 +452,14 @@ def login():
             error = "Invalid email or password."
     return render_template_string(TEMPLATE_AUTH, mode="login", error=error)
 
+
 @app.route("/signup", methods=["GET", "POST"])
 def signup():
     error = None
     if request.method == "POST":
         email = request.form.get("email", "").strip().lower()
         password = request.form.get("password", "")
-        
+
         if not email or not password:
             error = "All fields are required."
         else:
@@ -468,6 +482,7 @@ def signup():
                 error = "Email address is already registered."
     return render_template_string(TEMPLATE_AUTH, mode="signup", error=error)
 
+
 @app.route("/forgot-password", methods=["GET", "POST"])
 def forgot_password():
     message = None
@@ -478,7 +493,7 @@ def forgot_password():
         cursor = conn.cursor()
         cursor.execute("SELECT id FROM users WHERE email = ?", (email,))
         row = cursor.fetchone()
-        
+
         if row:
             code = str(random.randint(100000, 999999))
             cursor.execute("UPDATE users SET reset_code = ? WHERE email = ?", (code, email))
@@ -490,20 +505,21 @@ def forgot_password():
             cursor.close()
             conn.close()
             error = "Email address not found in system."
-            
+
     return render_template_string(TEMPLATE_AUTH, mode="forgot", error=error)
+
 
 @app.route("/reset-password", methods=["POST"])
 def reset_password():
     email = request.form.get("email", "").strip().lower()
     code = request.form.get("code", "").strip()
     new_password = request.form.get("new_password", "")
-    
+
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute("SELECT reset_code FROM users WHERE email = ?", (email,))
     row = cursor.fetchone()
-    
+
     if row and row[0] == code:
         cursor.execute("UPDATE users SET password = ?, reset_code = NULL WHERE email = ?", (new_password, email))
         conn.commit()
@@ -513,7 +529,9 @@ def reset_password():
     else:
         cursor.close()
         conn.close()
-        return render_template_string(TEMPLATE_AUTH, mode="reset_code_sent", email=email, error="Invalid verification code.")
+        return render_template_string(TEMPLATE_AUTH, mode="reset_code_sent", email=email,
+                                      error="Invalid verification code.")
+
 
 @app.route("/profile", methods=["GET", "POST"])
 def profile():
@@ -522,14 +540,14 @@ def profile():
     email = session["user_email"]
     success = request.args.get("success")
     error = None
-    
+
     conn = get_db_connection()
     cursor = conn.cursor()
-    
+
     if request.method == "POST":
         new_email = request.form.get("email", "").strip().lower()
         new_password = request.form.get("password", "")
-        
+
         try:
             if new_email and new_email != email:
                 cursor.execute("UPDATE users SET email = ? WHERE email = ?", (new_email, email))
@@ -541,18 +559,22 @@ def profile():
             success = "Profile updated successfully!"
         except Exception:
             error = "Error updating profile (Email might already be taken)."
-            
+
     cursor.execute("SELECT install_date, last_paid_date FROM users WHERE email = ?", (email,))
     cursor.close()
     conn.close()
-    
+
     is_paid, days_remaining = get_user_payment_status(email)
-    return render_template_string(TEMPLATE_PROFILE, user_email=email, is_paid=is_paid, days_remaining=days_remaining, paypal_link=PAYPAL_ME_LINK, success=success, error=error, payment_help_modal=PAYMENT_HELP_MODAL)
+    return render_template_string(TEMPLATE_PROFILE, user_email=email, is_paid=is_paid, days_remaining=days_remaining,
+                                  paypal_link=PAYPAL_ME_LINK, success=success, error=error,
+                                  payment_help_modal=PAYMENT_HELP_MODAL)
+
 
 @app.route("/logout")
 def logout():
     session.pop("user_email", None)
     return redirect(url_for("login"))
+
 
 @app.route("/paypal-webhook", methods=["POST"])
 def paypal_webhook():
@@ -560,12 +582,13 @@ def paypal_webhook():
         data = request.get_json(silent=True) or request.form.to_dict()
         resource = data.get("resource", {})
         payer_email = resource.get("payer", {}).get("email_address") or data.get("email", "")
-        
+
         if payer_email:
             conn = get_db_connection()
             cursor = conn.cursor()
             now_str = datetime.now().isoformat()
-            cursor.execute("UPDATE users SET has_paid = 1, last_paid_date = ? WHERE email = ?", (now_str, payer_email.lower()))
+            cursor.execute("UPDATE users SET has_paid = 1, last_paid_date = ? WHERE email = ?",
+                           (now_str, payer_email.lower()))
             conn.commit()
             cursor.close()
             conn.close()
@@ -573,49 +596,54 @@ def paypal_webhook():
     except Exception:
         return "Error", 400
 
+
 @app.route("/claim-payment", methods=["POST"])
 def claim_payment():
     if "user_email" not in session:
         return redirect(url_for("login"))
-    
+
     account_email = session["user_email"]
     payment_email = request.form.get("payment_email", "").strip().lower()
     transaction_ref = request.form.get("transaction_ref", "").strip()
-    
+
     if payment_email:
         conn = get_db_connection()
         cursor = conn.cursor()
         now_str = datetime.now().isoformat()
         # Upgrade account upon claim submission and log reference
         cursor.execute("UPDATE users SET has_paid = 1, last_paid_date = ? WHERE email = ?", (now_str, account_email))
-        cursor.execute("INSERT INTO help_messages (email, message, timestamp) VALUES (?, ?, ?)", 
-                       (account_email, f"Alternative Payment Email Claim: {payment_email} | Ref: {transaction_ref}", now_str))
+        cursor.execute("INSERT INTO help_messages (email, message, timestamp) VALUES (?, ?, ?)",
+                       (account_email, f"Alternative Payment Email Claim: {payment_email} | Ref: {transaction_ref}",
+                        now_str))
         conn.commit()
         cursor.close()
         conn.close()
-        return redirect(url_for("profile", success="Payment successfully claimed with alternate email and account upgraded!"))
-    
+        return redirect(
+            url_for("profile", success="Payment successfully claimed with alternate email and account upgraded!"))
+
     return redirect(url_for("profile"))
+
 
 @app.route("/dashboard")
 def dashboard():
     if "user_email" not in session:
         return redirect(url_for("login"))
-        
+
     email = session["user_email"]
     is_paid, days_remaining = get_user_payment_status(email)
-    
+
     conn = get_db_connection()
     cursor = conn.cursor()
-    
-    cursor.execute("SELECT company_query, results_html FROM tracking_jobs WHERE email = ? ORDER BY id DESC LIMIT 1", (email,))
+
+    cursor.execute("SELECT company_query, results_html FROM tracking_jobs WHERE email = ? ORDER BY id DESC LIMIT 1",
+                   (email,))
     t_row = cursor.fetchone()
     saved_query = t_row[0] if t_row else ""
     result_html = t_row[1] if t_row else ""
 
     cursor.close()
     conn.close()
-    
+
     return render_template_string(
         TEMPLATE_DASHBOARD,
         user_email=email,
@@ -628,25 +656,29 @@ def dashboard():
         payment_help_modal=PAYMENT_HELP_MODAL
     )
 
+
 @app.route("/special-feature", methods=["GET", "POST"])
 def special_feature():
     if "user_email" not in session: return redirect(url_for("login"))
     email = session["user_email"]
     is_paid, days_remaining = get_user_payment_status(email)
-    
+
     conn = get_db_connection()
     cursor = conn.cursor()
-    
+
     if request.method == "POST":
         area = request.form.get("area_query", "")
         item_query = request.form.get("item_query", "")
         if area and item_query:
             html_output = run_special_item_search(item_query, area)
             cursor.execute("DELETE FROM general_jobs WHERE email = ?", (email,))
-            cursor.execute("INSERT INTO general_jobs (email, item_query, region, results_html, last_updated) VALUES (?, ?, ?, ?, ?)", (email, item_query, area, html_output, datetime.now().isoformat()))
+            cursor.execute(
+                "INSERT INTO general_jobs (email, item_query, region, results_html, last_updated) VALUES (?, ?, ?, ?, ?)",
+                (email, item_query, area, html_output, datetime.now().isoformat()))
             conn.commit()
 
-    cursor.execute("SELECT item_query, region, results_html FROM general_jobs WHERE email = ? ORDER BY id DESC LIMIT 1", (email,))
+    cursor.execute("SELECT item_query, region, results_html FROM general_jobs WHERE email = ? ORDER BY id DESC LIMIT 1",
+                   (email,))
     g_row = cursor.fetchone()
     saved_item_query = g_row[0] if g_row else ""
     saved_area = g_row[1] if g_row else ""
@@ -668,24 +700,28 @@ def special_feature():
         payment_help_modal=PAYMENT_HELP_MODAL
     )
 
+
 @app.route("/local-hub", methods=["GET", "POST"])
 def local_hub():
     if "user_email" not in session: return redirect(url_for("login"))
     email = session["user_email"]
     is_paid, days_remaining = get_user_payment_status(email)
-    
+
     conn = get_db_connection()
     cursor = conn.cursor()
-    
+
     if request.method == "POST":
         location = request.form.get("location_query", "")
         if location:
             html_output = run_nearby_businesses_scan(location)
             cursor.execute("DELETE FROM nearby_jobs WHERE email = ?", (email,))
-            cursor.execute("INSERT INTO nearby_jobs (email, location_query, results_html, last_updated) VALUES (?, ?, ?, ?)", (email, location, html_output, datetime.now().isoformat()))
+            cursor.execute(
+                "INSERT INTO nearby_jobs (email, location_query, results_html, last_updated) VALUES (?, ?, ?, ?)",
+                (email, location, html_output, datetime.now().isoformat()))
             conn.commit()
 
-    cursor.execute("SELECT location_query, results_html FROM nearby_jobs WHERE email = ? ORDER BY id DESC LIMIT 1", (email,))
+    cursor.execute("SELECT location_query, results_html FROM nearby_jobs WHERE email = ? ORDER BY id DESC LIMIT 1",
+                   (email,))
     n_row = cursor.fetchone()
     saved_location = n_row[0] if n_row else ""
     nearby_result_html = n_row[1] if n_row else ""
@@ -705,15 +741,18 @@ def local_hub():
         payment_help_modal=PAYMENT_HELP_MODAL
     )
 
+
 @app.route("/archive-history")
 def archive_history():
     if "user_email" not in session: return redirect(url_for("login"))
     email = session["user_email"]
     is_paid, days_remaining = get_user_payment_status(email)
-    
+
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute("SELECT company_query, latest_results_html, last_updated FROM history_queries WHERE email = ? ORDER BY id DESC", (email,))
+    cursor.execute(
+        "SELECT company_query, latest_results_html, last_updated FROM history_queries WHERE email = ? ORDER BY id DESC",
+        (email,))
     history_rows = cursor.fetchall()
     history_items = [{"company": r[0], "html": r[1], "time": r[2]} for r in history_rows]
     cursor.close()
@@ -730,19 +769,21 @@ def archive_history():
         payment_help_modal=PAYMENT_HELP_MODAL
     )
 
+
 @app.route("/support", methods=["GET", "POST"])
 def support():
     if "user_email" not in session: return redirect(url_for("login"))
     email = session["user_email"]
     is_paid, days_remaining = get_user_payment_status(email)
     success = None
-    
+
     if request.method == "POST":
         message = request.form.get("message", "")
         if message:
             conn = get_db_connection()
             cursor = conn.cursor()
-            cursor.execute("INSERT INTO help_messages (email, message, timestamp) VALUES (?, ?, ?)", (email, message, datetime.now().isoformat()))
+            cursor.execute("INSERT INTO help_messages (email, message, timestamp) VALUES (?, ?, ?)",
+                           (email, message, datetime.now().isoformat()))
             conn.commit()
             cursor.close()
             conn.close()
@@ -760,6 +801,7 @@ def support():
         payment_help_modal=PAYMENT_HELP_MODAL
     )
 
+
 @app.route("/run", methods=["POST"])
 def run_search():
     if "user_email" not in session: return redirect(url_for("login"))
@@ -770,13 +812,18 @@ def run_search():
         conn = get_db_connection()
         cursor = conn.cursor()
         cursor.execute("DELETE FROM tracking_jobs WHERE email = ?", (email,))
-        cursor.execute("INSERT INTO tracking_jobs (email, company_query, results_html, last_updated) VALUES (?, ?, ?, ?)", (email, companies, html_output, datetime.now().isoformat()))
+        cursor.execute(
+            "INSERT INTO tracking_jobs (email, company_query, results_html, last_updated) VALUES (?, ?, ?, ?)",
+            (email, companies, html_output, datetime.now().isoformat()))
         cursor.execute("DELETE FROM history_queries WHERE email = ? AND company_query = ?", (email, companies))
-        cursor.execute("INSERT INTO history_queries (email, company_query, latest_results_html, last_updated) VALUES (?, ?, ?, ?)", (email, companies, html_output, datetime.now().isoformat()))
+        cursor.execute(
+            "INSERT INTO history_queries (email, company_query, latest_results_html, last_updated) VALUES (?, ?, ?, ?)",
+            (email, companies, html_output, datetime.now().isoformat()))
         conn.commit()
         cursor.close()
         conn.close()
     return redirect(url_for("dashboard"))
+
 
 @app.route("/clear-company")
 def clear_company():
@@ -789,6 +836,7 @@ def clear_company():
         conn.close()
     return redirect(url_for("dashboard"))
 
+
 @app.route("/clear-general")
 def clear_general():
     if "user_email" in session:
@@ -799,6 +847,7 @@ def clear_general():
         cursor.close()
         conn.close()
     return redirect(url_for("special_feature"))
+
 
 @app.route("/clear-nearby")
 def clear_nearby():
@@ -823,6 +872,10 @@ TEMPLATE_AUTH = """
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Google Adsense Script -->
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4321543724878495"
+     crossorigin="anonymous"></script>
     <style>
         body { font-family: 'Inter', sans-serif; background: #f8fafc; color: #1e293b; height: 100vh; display: flex; align-items: center; justify-content: center; }
         .auth-card { background: #ffffff; border: 1px solid #cbd5e1; border-radius: 16px; max-width: 420px; width: 100%; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1); }
@@ -922,6 +975,10 @@ TEMPLATE_PROFILE = """
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Google Adsense Script -->
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4321543724878495"
+     crossorigin="anonymous"></script>
     <style>
         body { font-family: 'Inter', sans-serif; background: #e0f2fe; color: #0f172a; }
         .sidebar { width: 260px; height: 100vh; position: fixed; background: #bae6fd; border-right: 1px solid #7dd3fc; }
@@ -1009,6 +1066,10 @@ TEMPLATE_DASHBOARD = """
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Google Adsense Script -->
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4321543724878495"
+     crossorigin="anonymous"></script>
     <style>
         body { font-family: 'Inter', sans-serif; background: #ffffff; color: #1e293b; }
         .sidebar { width: 260px; height: 100vh; position: fixed; background: #f1f5f9; border-right: 1px solid #e2e8f0; }
@@ -1094,6 +1155,10 @@ TEMPLATE_SPECIAL = """
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Google Adsense Script -->
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4321543724878495"
+     crossorigin="anonymous"></script>
     <style>
         body { font-family: 'Inter', sans-serif; background: #e0f2fe; color: #0f172a; }
         .sidebar { width: 260px; height: 100vh; position: fixed; background: #bae6fd; border-right: 1px solid #7dd3fc; }
@@ -1184,6 +1249,10 @@ TEMPLATE_LOCAL_HUB = """
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Google Adsense Script -->
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4321543724878495"
+     crossorigin="anonymous"></script>
     <style>
         body { font-family: 'Inter', sans-serif; background: #ffffff; color: #1e293b; }
         .sidebar { width: 260px; height: 100vh; position: fixed; background: #f1f5f9; border-right: 1px solid #e2e8f0; }
@@ -1269,6 +1338,10 @@ TEMPLATE_ARCHIVE = """
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Google Adsense Script -->
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4321543724878495"
+     crossorigin="anonymous"></script>
     <style>
         body { font-family: 'Inter', sans-serif; background: #000000; color: #f8fafc; }
         .sidebar { width: 260px; height: 100vh; position: fixed; background: #111827; border-right: 1px solid #1f2937; }
@@ -1350,6 +1423,10 @@ TEMPLATE_SUPPORT = """
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Google Adsense Script -->
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4321543724878495"
+     crossorigin="anonymous"></script>
     <style>
         body { font-family: 'Inter', sans-serif; background: #ffffff; color: #1e293b; }
         .sidebar { width: 260px; height: 100vh; position: fixed; background: #f1f5f9; border-right: 1px solid #e2e8f0; }
