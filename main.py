@@ -429,11 +429,6 @@ def public_home():
     return render_template_string(TEMPLATE_PUBLIC_HOME)
 
 
-@app.route("/dashboard")
-def dashboard():
-    if "user_email" not in session:
-        return redirect(url_for("login"))
-    # (Rest of your existing dashboard code stays here...)
 
 
 @app.route("/login", methods=["GET", "POST"])
