@@ -425,10 +425,15 @@ PAYMENT_HELP_MODAL = """
 # --- ROUTES ---
 
 @app.route("/")
-def index():
+def public_home():
+    return render_template_string(TEMPLATE_PUBLIC_HOME)
+
+
+@app.route("/dashboard")
+def dashboard():
     if "user_email" not in session:
         return redirect(url_for("login"))
-    return redirect(url_for("dashboard"))
+    # (Rest of your existing dashboard code stays here...)
 
 
 @app.route("/login", methods=["GET", "POST"])
@@ -859,6 +864,39 @@ def clear_nearby():
         cursor.close()
         conn.close()
     return redirect(url_for("local_hub"))
+
+
+@app.route("/about")
+def about_page():
+    content = """
+    <p>ApexIntel AI is an advanced autonomous market and competitor intelligence platform designed to help businesses, independent developers, and entrepreneurs track pricing dynamics, analyze regional storefront inventory, and gain data-driven insights.</p>
+    <p>Our automated systems continuously scan and aggregate commercial intelligence securely, giving you the competitive edge needed to optimize your operations.</p>
+    """
+    return render_template_string(TEMPLATE_INFO_PAGES, title="About Us", content=content)
+
+
+@app.route("/privacy-policy")
+def privacy_policy():
+    content = """
+    <p>At ApexIntel AI, accessible from our web platform, your privacy is extremely important to us. This Privacy Policy document outlines the types of information collected and recorded by ApexIntel AI and how we use it.</p>
+    <h5 class="fw-bold text-dark mt-4">Information We Collect</h5>
+    <p>When you register for an account, we collect your email address and secure account credentials strictly for authentication and subscription management purposes.</p>
+    <h5 class="fw-bold text-dark mt-4">Log Files & Cookies</h5>
+    <p>We use standard log files and cookies to enhance user experience, analyze platform traffic, and serve relevant advertisements through Google AdSense.</p>
+    """
+    return render_template_string(TEMPLATE_INFO_PAGES, title="Privacy Policy", content=content)
+
+
+@app.route("/terms-and-conditions")
+def terms_conditions():
+    content = """
+    <p>Welcome to ApexIntel AI! These terms and conditions outline the rules and regulations for the use of our web application and services.</p>
+    <h5 class="fw-bold text-dark mt-4">License & Usage</h5>
+    <p>By accessing this website, we assume you accept these terms and conditions. Do not continue to use ApexIntel AI if you do not agree to all of the terms stated on this page.</p>
+    <h5 class="fw-bold text-dark mt-4">User Accounts</h5>
+    <p>Users are responsible for maintaining the confidentiality of their login credentials and account access.</p>
+    """
+    return render_template_string(TEMPLATE_INFO_PAGES, title="Terms & Conditions", content=content)
 
 
 # --- HTML TEMPLATES ---
@@ -1498,6 +1536,162 @@ TEMPLATE_SUPPORT = """
 </body>
 </html>
 """
+TEMPLATE_PUBLIC_HOME = """
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ApexIntel AI - Market & Competitor Intelligence Suite</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
+    <!-- Google AdSense Verification Script -->
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4321543724878495"
+         crossorigin="anonymous"></script>
+
+    <style>
+        body { background: #f8fafc; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #333; }
+        .hero-section { background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: white; padding: 80px 0; }
+        .btn-brand { background: #ff1493; color: white; font-weight: bold; border-radius: 8px; }
+        .btn-brand:hover { background: #e01082; color: white; }
+        .card-custom { border: none; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.04); background: #ffffff; }
+    </style>
+</head>
+<body>
+    <!-- Public Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-light bg-white border-bottom py-3">
+        <div class="container">
+            <a class="navbar-brand fw-bold" href="{{ url_for('public_home') }}" style="color: #ff1493;">
+                <i class="fa-solid fa-chart-line me-2"></i>ApexIntel AI
+            </a>
+            <div class="ms-auto">
+                <a href="{{ url_for('login') }}" class="btn btn-outline-dark btn-sm me-2 fw-bold">Sign In</a>
+                <a href="{{ url_for('signup') }}" class="btn btn-brand btn-sm px-3">Get Started</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <header class="hero-section text-center">
+        <div class="container">
+            <h1 class="display-4 fw-bold mb-3">Autonomous Market & Competitor Intelligence</h1>
+            <p class="lead text-muted mb-4" style="color: #94a3b8 !important;">Track live competitor prices, scan local business hubs, and analyze market trends instantly with AI.</p>
+            <a href="{{ url_for('signup') }}" class="btn btn-brand btn-lg px-5 py-3 shadow">Start Free Trial</a>
+        </div>
+    </header>
+
+    <!-- AdSense Ad Unit Placement on Public Homepage -->
+    <div class="container my-5 text-center">
+        <div class="p-4 bg-white border rounded shadow-sm">
+            <span class="text-muted small d-block mb-2">Advertisement</span>
+            <ins class="adsbygoogle"
+                 style="display:block"
+                 data-ad-client="ca-pub-4321543724878495"
+                 data-ad-slot="1234567890"
+                 data-ad-format="auto"
+                 data-full-width-responsive="true"></ins>
+            <script>
+                 (adsbygoogle = window.adsbygoogle || []).push({});
+            </script>
+        </div>
+    </div>
+
+    <!-- Features Overview -->
+    <section class="container py-5">
+        <div class="row g-4">
+            <div class="col-md-4">
+                <div class="card card-custom p-4 h-100">
+                    <i class="fa-solid fa-store fa-2x mb-3" style="color: #ff1493;"></i>
+                    <h5 class="fw-bold">Competitor Intel</h5>
+                    <p class="text-muted small">Monitor real-time competitor storefront pricing and inventory status dynamically.</p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card card-custom p-4 h-100">
+                    <i class="fa-solid fa-crosshairs fa-2x mb-3" style="color: #0284c7;"></i>
+                    <h5 class="fw-bold">Special Feature</h5>
+                    <p class="text-muted small">Pinpoint specific items and merchandise searches across precise geographic regions.</p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card card-custom p-4 h-100">
+                    <i class="fa-solid fa-shop fa-2x mb-3" style="color: #ff1493;"></i>
+                    <h5 class="fw-bold">Local Hub Scan</h5>
+                    <p class="text-muted small">Discover active local merchants, goods produced, and commercial hubs instantly.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Public Footer -->
+    <footer class="bg-white border-top py-4 mt-5 text-center text-muted small">
+        <div class="container">
+            <div class="mb-2">
+                <a href="{{ url_for('public_home') }}" class="text-decoration-none text-muted me-3">Home</a>
+                <a href="{{ url_for('about_page') }}" class="text-decoration-none text-muted me-3">About Us</a>
+                <a href="{{ url_for('privacy_policy') }}" class="text-decoration-none text-muted me-3">Privacy Policy</a>
+                <a href="{{ url_for('terms_conditions') }}" class="text-decoration-none text-muted">Terms & Conditions</a>
+            </div>
+            <p class="m-0">&copy; 2026 ApexIntel AI. All rights reserved.</p>
+        </div>
+    </footer>
+</body>
+</html>
+"""
+
+TEMPLATE_INFO_PAGES = """
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }} - ApexIntel AI</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Google AdSense Verification Script -->
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4321543724878495"
+         crossorigin="anonymous"></script>
+
+    <style>
+        body { background: #f8fafc; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #333; }
+        .card-custom { border: none; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.04); background: #ffffff; }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-light bg-white border-bottom py-3">
+        <div class="container">
+            <a class="navbar-brand fw-bold" href="{{ url_for('public_home') }}" style="color: #ff1493;">
+                <i class="fa-solid fa-chart-line me-2"></i>ApexIntel AI
+            </a>
+            <div class="ms-auto">
+                <a href="{{ url_for('public_home') }}" class="btn btn-outline-dark btn-sm me-2">Home</a>
+                <a href="{{ url_for('login') }}" class="btn btn-dark btn-sm">Sign In</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container py-5" style="max-width: 800px;">
+        <div class="card card-custom p-5">
+            <h2 class="fw-bold mb-4" style="color: #ff1493;">{{ title }}</h2>
+            <div class="text-muted" style="line-height: 1.8;">
+                {{ content | safe }}
+            </div>
+        </div>
+    </div>
+
+    <footer class="bg-white border-top py-4 text-center text-muted small mt-5">
+        <div class="container">
+            <a href="{{ url_for('public_home') }}" class="text-decoration-none text-muted me-3">Home</a>
+            <a href="{{ url_for('about_page') }}" class="text-decoration-none text-muted me-3">About Us</a>
+            <a href="{{ url_for('privacy_policy') }}" class="text-decoration-none text-muted me-3">Privacy Policy</a>
+            <a href="{{ url_for('terms_conditions') }}" class="text-decoration-none text-muted">Terms & Conditions</a>
+            <p class="mt-2 m-0">&copy; 2026 ApexIntel AI. All rights reserved.</p>
+        </div>
+    </footer>
+</body>
+</html>
+"""
 if __name__ == "__main__":
     app.run(debug=True, port=5000)
