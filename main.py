@@ -104,6 +104,8 @@ init_db()
 
 
 def get_user_payment_status(email):
+    if not email:
+        return 0, TRIAL_DAYS
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute("SELECT has_paid, install_date, last_paid_date FROM users WHERE email = ?", (email,))
@@ -355,7 +357,12 @@ scheduler = BackgroundScheduler()
 scheduler.add_job(func=background_24hr_refresh_job, trigger="interval", hours=24)
 scheduler.start()
 
-# --- STICKER HTML SNIPPET ---
+# --- ADSENSE & UI SNIPPETS ---
+ADSENSE_HEADER_TAG = """
+<!-- Google AdSense Verification Script -->
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4321543724878495" crossorigin="anonymous"></script>
+"""
+
 STICKER_POPUP_HTML = """
 <div id="stickerPopup" style="position: fixed; bottom: 20px; right: 20px; z-index: 9999; display: none; background: #fff; border: 2px solid #ff1493; padding: 10px 15px; border-radius: 50px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); font-weight: bold; color: #333; align-items: center; gap: 10px;">
     <span id="stickerIcon" style="font-size: 24px;">👶</span>
@@ -383,9 +390,7 @@ STICKER_POPUP_HTML = """
 </script>
 """
 
-# --- PAYMENT HELP MODAL HTML SNIPPET ---
 PAYMENT_HELP_MODAL = """
-<!-- Modal / Section Triggered alongside payment prompt -->
 <div class="modal fade" id="paymentHelpModal" tabindex="-1" aria-labelledby="paymentHelpModalLabel" aria-hidden="true">
   <div class="modal-dialog">
     <div class="modal-content card-custom p-3">
@@ -400,7 +405,7 @@ PAYMENT_HELP_MODAL = """
         <form method="POST" action="{{ url_for('claim_payment') }}">
           <div class="mb-3">
             <label class="form-label text-muted small fw-bold">Your Account Login Email (Sign-up Email)</label>
-            <input type="email" class="form-control" name="account_email" value="{{ user_email }}" readonly>
+            <input type="email" class="form-control" name="account_email" value="{{ user_email or 'guest@apexintel.ai' }}" readonly>
           </div>
           <div class="mb-3">
             <label class="form-label text-muted small fw-bold">Email Used For Payment (If Different)</label>
@@ -421,14 +426,173 @@ PAYMENT_HELP_MODAL = """
 </div>
 """
 
+TEMPLATE_INFO_PAGES = """
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }} - ApexIntel AI</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    {{ adsense_tag | safe }}
+    <style>
+        body { background: #f8fafc; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #333; }
+        .card-custom { border: none; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.04); background: #ffffff; }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-light bg-white border-bottom py-3">
+        <div class="container">
+            <a class="navbar-brand fw-bold" href="{{ url_for('public_home') }}" style="color: #ff1493;">
+                <i class="fa-solid fa-chart-line me-2"></i>ApexIntel AI
+            </a>
+            <div class="ms-auto">
+                <a href="{{ url_for('dashboard') }}" class="btn btn-outline-dark btn-sm me-2">Dashboard</a>
+                <a href="{{ url_for('login') }}" class="btn btn-dark btn-sm">Sign In</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container py-5" style="max-width: 800px;">
+        <div class="card card-custom p-5">
+            <h2 class="fw-bold mb-4" style="color: #ff1493;">{{ title }}</h2>
+            <div class="text-muted" style="line-height: 1.8;">
+                {{ content | safe }}
+            </div>
+        </div>
+    </div>
+
+    <footer class="bg-white border-top py-4 text-center text-muted small mt-5">
+        <div class="container">
+            <a href="{{ url_for('public_home') }}" class="text-decoration-none text-muted me-3">Home</a>
+            <a href="{{ url_for('about_page') }}" class="text-decoration-none text-muted me-3">About Us</a>
+            <a href="{{ url_for('privacy_policy') }}" class="text-decoration-none text-muted me-3">Privacy Policy</a>
+            <a href="{{ url_for('terms_conditions') }}" class="text-decoration-none text-muted">Terms & Conditions</a>
+            <p class="mt-2 m-0">&copy; 2026 ApexIntel AI. All rights reserved.</p>
+        </div>
+    </footer>
+</body>
+</html>
+"""
+
 
 # --- ROUTES ---
 
 @app.route("/")
 def public_home():
-    return render_template_string(TEMPLATE_PUBLIC_HOME)
+    return render_template_string("""
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ApexIntel AI - Market & Competitor Intelligence Suite</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    {{ adsense_tag | safe }}
+    <style>
+        body { background: #f8fafc; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #333; }
+        .hero-section { background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: white; padding: 80px 0; }
+        .btn-brand { background: #ff1493; color: white; font-weight: bold; border-radius: 8px; }
+        .btn-brand:hover { background: #e01082; color: white; }
+        .card-custom { border: none; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.04); background: #ffffff; }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-light bg-white border-bottom py-3">
+        <div class="container">
+            <a class="navbar-brand fw-bold" href="{{ url_for('public_home') }}" style="color: #ff1493;">
+                <i class="fa-solid fa-chart-line me-2"></i>ApexIntel AI
+            </a>
+            <div class="ms-auto">
+                <a href="{{ url_for('dashboard') }}" class="btn btn-outline-dark btn-sm me-2 fw-bold">Explore Platform</a>
+                <a href="{{ url_for('login') }}" class="btn btn-brand btn-sm px-3">Sign In</a>
+            </div>
+        </div>
+    </nav>
+
+    <header class="hero-section text-center">
+        <div class="container">
+            <h1 class="display-4 fw-bold mb-3">Autonomous Market & Competitor Intelligence</h1>
+            <p class="lead text-muted mb-4" style="color: #94a3b8 !important;">Track live competitor prices, scan local business hubs, and analyze market trends instantly with AI.</p>
+            <a href="{{ url_for('dashboard') }}" class="btn btn-brand btn-lg px-5 py-3 shadow">Open Intelligence Dashboard</a>
+        </div>
+    </header>
+
+    <section class="container py-5">
+        <div class="row g-4">
+            <div class="col-md-4">
+                <div class="card card-custom p-4 h-100">
+                    <i class="fa-solid fa-store fa-2x mb-3" style="color: #ff1493;"></i>
+                    <h5 class="fw-bold">Competitor Intel</h5>
+                    <p class="text-muted small">Monitor real-time competitor storefront pricing and inventory status dynamically.</p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card card-custom p-4 h-100">
+                    <i class="fa-solid fa-crosshairs fa-2x mb-3" style="color: #0284c7;"></i>
+                    <h5 class="fw-bold">Special Feature</h5>
+                    <p class="text-muted small">Pinpoint specific items and merchandise searches across precise geographic regions.</p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card card-custom p-4 h-100">
+                    <i class="fa-solid fa-shop fa-2x mb-3" style="color: #ff1493;"></i>
+                    <h5 class="fw-bold">Local Hub Scan</h5>
+                    <p class="text-muted small">Discover active local merchants, goods produced, and commercial hubs instantly.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer class="bg-white border-top py-4 mt-5 text-center text-muted small">
+        <div class="container">
+            <div class="mb-2">
+                <a href="{{ url_for('public_home') }}" class="text-decoration-none text-muted me-3">Home</a>
+                <a href="{{ url_for('about_page') }}" class="text-decoration-none text-muted me-3">About Us</a>
+                <a href="{{ url_for('privacy_policy') }}" class="text-decoration-none text-muted me-3">Privacy Policy</a>
+                <a href="{{ url_for('terms_conditions') }}" class="text-decoration-none text-muted">Terms & Conditions</a>
+            </div>
+            <p class="m-0">&copy; 2026 ApexIntel AI. All rights reserved.</p>
+        </div>
+    </footer>
+</body>
+</html>
+""", adsense_tag=ADSENSE_HEADER_TAG)
 
 
+@app.route("/about")
+def about_page():
+    content = """
+    <p>ApexIntel AI is an advanced autonomous market and competitor intelligence platform designed to help businesses, independent developers, and entrepreneurs track pricing dynamics, analyze regional storefront inventory, and gain data-driven insights.</p>
+    <p>Our automated systems continuously scan and aggregate commercial intelligence securely, giving you the competitive edge needed to optimize your operations.</p>
+    """
+    return render_template_string(TEMPLATE_INFO_PAGES, title="About Us", content=content, adsense_tag=ADSENSE_HEADER_TAG)
+
+
+@app.route("/privacy-policy")
+def privacy_policy():
+    content = """
+    <p>At ApexIntel AI, accessible from our web platform, your privacy is extremely important to us. This Privacy Policy document outlines the types of information collected and recorded by ApexIntel AI and how we use it.</p>
+    <h5 class="fw-bold text-dark mt-4">Information We Collect</h5>
+    <p>When you register for an account, we collect your email address and secure account credentials strictly for authentication and subscription management purposes.</p>
+    <h5 class="fw-bold text-dark mt-4">Log Files & Cookies</h5>
+    <p>We use standard log files and cookies to enhance user experience, analyze platform traffic, and serve relevant advertisements through Google AdSense.</p>
+    """
+    return render_template_string(TEMPLATE_INFO_PAGES, title="Privacy Policy", content=content, adsense_tag=ADSENSE_HEADER_TAG)
+
+
+@app.route("/terms-and-conditions")
+def terms_conditions():
+    content = """
+    <p>Welcome to ApexIntel AI! These terms and conditions outline the rules and regulations for the use of our web application and services.</p>
+    <h5 class="fw-bold text-dark mt-4">License & Usage</h5>
+    <p>By accessing this website, we assume you accept these terms and conditions. Do not continue to use ApexIntel AI if you do not agree to all of the terms stated on this page.</p>
+    <h5 class="fw-bold text-dark mt-4">User Accounts</h5>
+    <p>Users are responsible for maintaining the confidentiality of their login credentials and account access.</p>
+    """
+    return render_template_string(TEMPLATE_INFO_PAGES, title="Terms & Conditions", content=content, adsense_tag=ADSENSE_HEADER_TAG)
 
 
 @app.route("/login", methods=["GET", "POST"])
@@ -450,7 +614,7 @@ def login():
             return redirect(url_for("dashboard"))
         else:
             error = "Invalid email or password."
-    return render_template_string(TEMPLATE_AUTH, mode="login", error=error)
+    return render_template_string(TEMPLATE_AUTH, mode="login", error=error, adsense_tag=ADSENSE_HEADER_TAG)
 
 
 @app.route("/signup", methods=["GET", "POST"])
@@ -480,12 +644,11 @@ def signup():
                 cursor.close()
                 conn.close()
                 error = "Email address is already registered."
-    return render_template_string(TEMPLATE_AUTH, mode="signup", error=error)
+    return render_template_string(TEMPLATE_AUTH, mode="signup", error=error, adsense_tag=ADSENSE_HEADER_TAG)
 
 
 @app.route("/forgot-password", methods=["GET", "POST"])
 def forgot_password():
-    message = None
     error = None
     if request.method == "POST":
         email = request.form.get("email", "").strip().lower()
@@ -500,13 +663,13 @@ def forgot_password():
             conn.commit()
             cursor.close()
             conn.close()
-            return render_template_string(TEMPLATE_AUTH, mode="reset_code_sent", email=email, dev_code=code)
+            return render_template_string(TEMPLATE_AUTH, mode="reset_code_sent", email=email, dev_code=code, adsense_tag=ADSENSE_HEADER_TAG)
         else:
             cursor.close()
             conn.close()
             error = "Email address not found in system."
 
-    return render_template_string(TEMPLATE_AUTH, mode="forgot", error=error)
+    return render_template_string(TEMPLATE_AUTH, mode="forgot", error=error, adsense_tag=ADSENSE_HEADER_TAG)
 
 
 @app.route("/reset-password", methods=["POST"])
@@ -530,14 +693,12 @@ def reset_password():
         cursor.close()
         conn.close()
         return render_template_string(TEMPLATE_AUTH, mode="reset_code_sent", email=email,
-                                      error="Invalid verification code.")
+                                      error="Invalid verification code.", adsense_tag=ADSENSE_HEADER_TAG)
 
 
 @app.route("/profile", methods=["GET", "POST"])
 def profile():
-    if "user_email" not in session:
-        return redirect(url_for("login"))
-    email = session["user_email"]
+    email = session.get("user_email", "guest@apexintel.ai")
     success = request.args.get("success")
     error = None
 
@@ -549,11 +710,11 @@ def profile():
         new_password = request.form.get("password", "")
 
         try:
-            if new_email and new_email != email:
+            if new_email and new_email != email and "user_email" in session:
                 cursor.execute("UPDATE users SET email = ? WHERE email = ?", (new_email, email))
                 session["user_email"] = new_email
                 email = new_email
-            if new_password:
+            if new_password and "user_email" in session:
                 cursor.execute("UPDATE users SET password = ? WHERE email = ?", (new_password, email))
             conn.commit()
             success = "Profile updated successfully!"
@@ -564,16 +725,16 @@ def profile():
     cursor.close()
     conn.close()
 
-    is_paid, days_remaining = get_user_payment_status(email)
+    is_paid, days_remaining = get_user_payment_status(email if "user_email" in session else None)
     return render_template_string(TEMPLATE_PROFILE, user_email=email, is_paid=is_paid, days_remaining=days_remaining,
                                   paypal_link=PAYPAL_ME_LINK, success=success, error=error,
-                                  payment_help_modal=PAYMENT_HELP_MODAL)
+                                  payment_help_modal=PAYMENT_HELP_MODAL, adsense_tag=ADSENSE_HEADER_TAG)
 
 
 @app.route("/logout")
 def logout():
     session.pop("user_email", None)
-    return redirect(url_for("login"))
+    return redirect(url_for("public_home"))
 
 
 @app.route("/paypal-webhook", methods=["POST"])
@@ -599,10 +760,7 @@ def paypal_webhook():
 
 @app.route("/claim-payment", methods=["POST"])
 def claim_payment():
-    if "user_email" not in session:
-        return redirect(url_for("login"))
-
-    account_email = session["user_email"]
+    account_email = session.get("user_email", "guest@apexintel.ai")
     payment_email = request.form.get("payment_email", "").strip().lower()
     transaction_ref = request.form.get("transaction_ref", "").strip()
 
@@ -610,7 +768,6 @@ def claim_payment():
         conn = get_db_connection()
         cursor = conn.cursor()
         now_str = datetime.now().isoformat()
-        # Upgrade account upon claim submission and log reference
         cursor.execute("UPDATE users SET has_paid = 1, last_paid_date = ? WHERE email = ?", (now_str, account_email))
         cursor.execute("INSERT INTO help_messages (email, message, timestamp) VALUES (?, ?, ?)",
                        (account_email, f"Alternative Payment Email Claim: {payment_email} | Ref: {transaction_ref}",
@@ -624,19 +781,17 @@ def claim_payment():
     return redirect(url_for("profile"))
 
 
+# --- FULLY PUBLIC ROUTES (ADSENSE FRIENDLY) ---
+
 @app.route("/dashboard")
 def dashboard():
-    if "user_email" not in session:
-        return redirect(url_for("login"))
-
-    email = session["user_email"]
-    is_paid, days_remaining = get_user_payment_status(email)
+    email = session.get("user_email", "guest@apexintel.ai")
+    is_paid, days_remaining = get_user_payment_status(email if "user_email" in session else None)
 
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    cursor.execute("SELECT company_query, results_html FROM tracking_jobs WHERE email = ? ORDER BY id DESC LIMIT 1",
-                   (email,))
+    cursor.execute("SELECT company_query, results_html FROM tracking_jobs ORDER BY id DESC LIMIT 1")
     t_row = cursor.fetchone()
     saved_query = t_row[0] if t_row else ""
     result_html = t_row[1] if t_row else ""
@@ -653,15 +808,15 @@ def dashboard():
         result_html=result_html,
         paypal_link=PAYPAL_ME_LINK,
         sticker_popup=STICKER_POPUP_HTML,
-        payment_help_modal=PAYMENT_HELP_MODAL
+        payment_help_modal=PAYMENT_HELP_MODAL,
+        adsense_tag=ADSENSE_HEADER_TAG
     )
 
 
 @app.route("/special-feature", methods=["GET", "POST"])
 def special_feature():
-    if "user_email" not in session: return redirect(url_for("login"))
-    email = session["user_email"]
-    is_paid, days_remaining = get_user_payment_status(email)
+    email = session.get("user_email", "guest@apexintel.ai")
+    is_paid, days_remaining = get_user_payment_status(email if "user_email" in session else None)
 
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -671,14 +826,12 @@ def special_feature():
         item_query = request.form.get("item_query", "")
         if area and item_query:
             html_output = run_special_item_search(item_query, area)
-            cursor.execute("DELETE FROM general_jobs WHERE email = ?", (email,))
             cursor.execute(
                 "INSERT INTO general_jobs (email, item_query, region, results_html, last_updated) VALUES (?, ?, ?, ?, ?)",
                 (email, item_query, area, html_output, datetime.now().isoformat()))
             conn.commit()
 
-    cursor.execute("SELECT item_query, region, results_html FROM general_jobs WHERE email = ? ORDER BY id DESC LIMIT 1",
-                   (email,))
+    cursor.execute("SELECT item_query, region, results_html FROM general_jobs ORDER BY id DESC LIMIT 1")
     g_row = cursor.fetchone()
     saved_item_query = g_row[0] if g_row else ""
     saved_area = g_row[1] if g_row else ""
@@ -697,15 +850,15 @@ def special_feature():
         special_result_html=special_result_html,
         paypal_link=PAYPAL_ME_LINK,
         sticker_popup=STICKER_POPUP_HTML,
-        payment_help_modal=PAYMENT_HELP_MODAL
+        payment_help_modal=PAYMENT_HELP_MODAL,
+        adsense_tag=ADSENSE_HEADER_TAG
     )
 
 
 @app.route("/local-hub", methods=["GET", "POST"])
 def local_hub():
-    if "user_email" not in session: return redirect(url_for("login"))
-    email = session["user_email"]
-    is_paid, days_remaining = get_user_payment_status(email)
+    email = session.get("user_email", "guest@apexintel.ai")
+    is_paid, days_remaining = get_user_payment_status(email if "user_email" in session else None)
 
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -714,14 +867,12 @@ def local_hub():
         location = request.form.get("location_query", "")
         if location:
             html_output = run_nearby_businesses_scan(location)
-            cursor.execute("DELETE FROM nearby_jobs WHERE email = ?", (email,))
             cursor.execute(
                 "INSERT INTO nearby_jobs (email, location_query, results_html, last_updated) VALUES (?, ?, ?, ?)",
                 (email, location, html_output, datetime.now().isoformat()))
             conn.commit()
 
-    cursor.execute("SELECT location_query, results_html FROM nearby_jobs WHERE email = ? ORDER BY id DESC LIMIT 1",
-                   (email,))
+    cursor.execute("SELECT location_query, results_html FROM nearby_jobs ORDER BY id DESC LIMIT 1")
     n_row = cursor.fetchone()
     saved_location = n_row[0] if n_row else ""
     nearby_result_html = n_row[1] if n_row else ""
@@ -738,21 +889,21 @@ def local_hub():
         nearby_result_html=nearby_result_html,
         paypal_link=PAYPAL_ME_LINK,
         sticker_popup=STICKER_POPUP_HTML,
-        payment_help_modal=PAYMENT_HELP_MODAL
+        payment_help_modal=PAYMENT_HELP_MODAL,
+        adsense_tag=ADSENSE_HEADER_TAG
     )
 
 
 @app.route("/archive-history")
 def archive_history():
-    if "user_email" not in session: return redirect(url_for("login"))
-    email = session["user_email"]
-    is_paid, days_remaining = get_user_payment_status(email)
+    email = session.get("user_email", "guest@apexintel.ai")
+    is_paid, days_remaining = get_user_payment_status(email if "user_email" in session else None)
 
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute(
-        "SELECT company_query, latest_results_html, last_updated FROM history_queries WHERE email = ? ORDER BY id DESC",
-        (email,))
+        "SELECT company_query, latest_results_html, last_updated FROM history_queries ORDER BY id DESC LIMIT 10"
+    )
     history_rows = cursor.fetchall()
     history_items = [{"company": r[0], "html": r[1], "time": r[2]} for r in history_rows]
     cursor.close()
@@ -766,15 +917,15 @@ def archive_history():
         history_items=history_items,
         paypal_link=PAYPAL_ME_LINK,
         sticker_popup=STICKER_POPUP_HTML,
-        payment_help_modal=PAYMENT_HELP_MODAL
+        payment_help_modal=PAYMENT_HELP_MODAL,
+        adsense_tag=ADSENSE_HEADER_TAG
     )
 
 
 @app.route("/support", methods=["GET", "POST"])
 def support():
-    if "user_email" not in session: return redirect(url_for("login"))
-    email = session["user_email"]
-    is_paid, days_remaining = get_user_payment_status(email)
+    email = session.get("user_email", "guest@apexintel.ai")
+    is_paid, days_remaining = get_user_payment_status(email if "user_email" in session else None)
     success = None
 
     if request.method == "POST":
@@ -798,24 +949,23 @@ def support():
         success=success,
         paypal_link=PAYPAL_ME_LINK,
         sticker_popup=STICKER_POPUP_HTML,
-        payment_help_modal=PAYMENT_HELP_MODAL
+        payment_help_modal=PAYMENT_HELP_MODAL,
+        adsense_tag=ADSENSE_HEADER_TAG
     )
 
 
 @app.route("/run", methods=["POST"])
 def run_search():
-    if "user_email" not in session: return redirect(url_for("login"))
-    email = session["user_email"]
+    email = session.get("user_email", "guest@apexintel.ai")
     companies = request.form.get("companies", "")
     if companies:
         html_output = run_competitor_intelligence(companies)
         conn = get_db_connection()
         cursor = conn.cursor()
-        cursor.execute("DELETE FROM tracking_jobs WHERE email = ?", (email,))
+        cursor.execute("DELETE FROM tracking_jobs")
         cursor.execute(
             "INSERT INTO tracking_jobs (email, company_query, results_html, last_updated) VALUES (?, ?, ?, ?)",
             (email, companies, html_output, datetime.now().isoformat()))
-        cursor.execute("DELETE FROM history_queries WHERE email = ? AND company_query = ?", (email, companies))
         cursor.execute(
             "INSERT INTO history_queries (email, company_query, latest_results_html, last_updated) VALUES (?, ?, ?, ?)",
             (email, companies, html_output, datetime.now().isoformat()))
@@ -827,866 +977,14 @@ def run_search():
 
 @app.route("/clear-company")
 def clear_company():
-    if "user_email" in session:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute("DELETE FROM tracking_jobs WHERE email = ?", (session["user_email"],))
-        conn.commit()
-        cursor.close()
-        conn.close()
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM tracking_jobs")
+    conn.commit()
+    cursor.close()
+    conn.close()
     return redirect(url_for("dashboard"))
 
 
-@app.route("/clear-general")
-def clear_general():
-    if "user_email" in session:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute("DELETE FROM general_jobs WHERE email = ?", (session["user_email"],))
-        conn.commit()
-        cursor.close()
-        conn.close()
-    return redirect(url_for("special_feature"))
-
-
-@app.route("/clear-nearby")
-def clear_nearby():
-    if "user_email" in session:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute("DELETE FROM nearby_jobs WHERE email = ?", (session["user_email"],))
-        conn.commit()
-        cursor.close()
-        conn.close()
-    return redirect(url_for("local_hub"))
-
-
-@app.route("/about")
-def about_page():
-    content = """
-    <p>ApexIntel AI is an advanced autonomous market and competitor intelligence platform designed to help businesses, independent developers, and entrepreneurs track pricing dynamics, analyze regional storefront inventory, and gain data-driven insights.</p>
-    <p>Our automated systems continuously scan and aggregate commercial intelligence securely, giving you the competitive edge needed to optimize your operations.</p>
-    """
-    return render_template_string(TEMPLATE_INFO_PAGES, title="About Us", content=content)
-
-
-@app.route("/privacy-policy")
-def privacy_policy():
-    content = """
-    <p>At ApexIntel AI, accessible from our web platform, your privacy is extremely important to us. This Privacy Policy document outlines the types of information collected and recorded by ApexIntel AI and how we use it.</p>
-    <h5 class="fw-bold text-dark mt-4">Information We Collect</h5>
-    <p>When you register for an account, we collect your email address and secure account credentials strictly for authentication and subscription management purposes.</p>
-    <h5 class="fw-bold text-dark mt-4">Log Files & Cookies</h5>
-    <p>We use standard log files and cookies to enhance user experience, analyze platform traffic, and serve relevant advertisements through Google AdSense.</p>
-    """
-    return render_template_string(TEMPLATE_INFO_PAGES, title="Privacy Policy", content=content)
-
-
-@app.route("/terms-and-conditions")
-def terms_conditions():
-    content = """
-    <p>Welcome to ApexIntel AI! These terms and conditions outline the rules and regulations for the use of our web application and services.</p>
-    <h5 class="fw-bold text-dark mt-4">License & Usage</h5>
-    <p>By accessing this website, we assume you accept these terms and conditions. Do not continue to use ApexIntel AI if you do not agree to all of the terms stated on this page.</p>
-    <h5 class="fw-bold text-dark mt-4">User Accounts</h5>
-    <p>Users are responsible for maintaining the confidentiality of their login credentials and account access.</p>
-    """
-    return render_template_string(TEMPLATE_INFO_PAGES, title="Terms & Conditions", content=content)
-
-
-# --- HTML TEMPLATES ---
-
-TEMPLATE_AUTH = """
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Authentication - ApexIntel AI</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
-    <!-- Google Adsense Script -->
-    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4321543724878495"
-     crossorigin="anonymous"></script>
-    <style>
-        body { font-family: 'Inter', sans-serif; background: #f8fafc; color: #1e293b; height: 100vh; display: flex; align-items: center; justify-content: center; }
-        .auth-card { background: #ffffff; border: 1px solid #cbd5e1; border-radius: 16px; max-width: 420px; width: 100%; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1); }
-        .form-control { background: #f1f5f9; border-color: #cbd5e1; color: #1e293b; }
-        .form-control:focus { background: #f1f5f9; color: #1e293b; border-color: #ff1493; box-shadow: none; }
-    </style>
-</head>
-<body>
-    <div class="container text-center">
-        <div class="auth-card p-5 mx-auto text-start">
-            <div class="text-center mb-4">
-                <i class="fa-solid fa-brain fa-2x" style="color: #ff1493;"></i>
-                <h3 class="fw-bold text-dark mt-2">ApexIntel AI</h3>
-                <p class="text-muted small">Autonomous Business Intelligence Engine</p>
-            </div>
-            {% if error %}
-                <div class="alert alert-danger py-2 small">{{ error }}</div>
-            {% endif %}
-
-            {% if mode == 'login' %}
-                <form method="POST">
-                    <div class="mb-3">
-                        <label class="form-label text-muted small fw-bold">Email Address</label>
-                        <input type="email" name="email" class="form-control" placeholder="name@company.com" required>
-                    </div>
-                    <div class="mb-2">
-                        <label class="form-label text-muted small fw-bold">Password</label>
-                        <input type="password" name="password" class="form-control" placeholder="••••••••" required>
-                    </div>
-                    <div class="text-end mb-4">
-                        <a href="{{ url_for('forgot_password') }}" class="small text-muted text-decoration-none">Forgot Password?</a>
-                    </div>
-                    <button type="submit" class="btn w-100 fw-bold py-2 text-white" style="background: #ff1493;">Sign In</button>
-                </form>
-                <div class="text-center mt-4 small">
-                    <span class="text-muted">Don't have an account?</span> <a href="{{ url_for('signup') }}" style="color: #ff1493; text-decoration: none;">Sign Up</a>
-                </div>
-
-            {% elif mode == 'signup' %}
-                <form method="POST">
-                    <div class="mb-3">
-                        <label class="form-label text-muted small fw-bold">Email Address</label>
-                        <input type="email" name="email" class="form-control" placeholder="name@company.com" required>
-                    </div>
-                    <div class="mb-4">
-                        <label class="form-label text-muted small fw-bold">Password</label>
-                        <input type="password" name="password" class="form-control" placeholder="••••••••" required>
-                    </div>
-                    <button type="submit" class="btn w-100 fw-bold py-2 text-white" style="background: #ff1493;">Create Account</button>
-                </form>
-                <div class="text-center mt-4 small">
-                    <span class="text-muted">Already have an account?</span> <a href="{{ url_for('login') }}" style="color: #ff1493; text-decoration: none;">Sign In</a>
-                </div>
-
-            {% elif mode == 'forgot' %}
-                <form method="POST">
-                    <p class="text-muted small mb-3">Enter your registered email address to receive a verification code.</p>
-                    <div class="mb-4">
-                        <label class="form-label text-muted small fw-bold">Email Address</label>
-                        <input type="email" name="email" class="form-control" placeholder="name@company.com" required>
-                    </div>
-                    <button type="submit" class="btn w-100 fw-bold py-2 text-white" style="background: #ff1493;">Send Reset Code</button>
-                </form>
-                <div class="text-center mt-4 small">
-                    <a href="{{ url_for('login') }}" style="color: #ff1493; text-decoration: none;">Back to Sign In</a>
-                </div>
-
-            {% elif mode == 'reset_code_sent' %}
-                <form method="POST" action="{{ url_for('reset_password') }}">
-                    <input type="hidden" name="email" value="{{ email }}">
-                    <div class="alert alert-info py-2 small">
-                        Recovery code generated! (Dev Code: <b>{{ dev_code }}</b>)
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label text-muted small fw-bold">Verification Code</label>
-                        <input type="text" name="code" class="form-control" placeholder="123456" required>
-                    </div>
-                    <div class="mb-4">
-                        <label class="form-label text-muted small fw-bold">New Password</label>
-                        <input type="password" name="new_password" class="form-control" placeholder="••••••••" required>
-                    </div>
-                    <button type="submit" class="btn w-100 fw-bold py-2 text-white" style="background: #ff1493;">Reset Password</button>
-                </form>
-            {% endif %}
-        </div>
-    </div>
-</body>
-</html>
-"""
-
-TEMPLATE_PROFILE = """
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Profile Settings - ApexIntel AI</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
-    <!-- Google Adsense Script -->
-    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4321543724878495"
-     crossorigin="anonymous"></script>
-    <style>
-        body { font-family: 'Inter', sans-serif; background: #e0f2fe; color: #0f172a; }
-        .sidebar { width: 260px; height: 100vh; position: fixed; background: #bae6fd; border-right: 1px solid #7dd3fc; }
-        .main-content { margin-left: 260px; padding: 30px; }
-        .card-custom { background: #ffffff; border: 1px solid #7dd3fc; border-radius: 12px; }
-        .form-control { background: #f0f9ff; border-color: #bae6fd; color: #0f172a; }
-        .form-control:focus { background: #f0f9ff; color: #0f172a; border-color: #0284c7; box-shadow: none; }
-        .nav-link { color: #0369a1; font-weight: 500; border-radius: 8px; margin-bottom: 4px; }
-        .nav-link:hover, .nav-link.active { color: #fff; background: #0284c7; }
-        .nav-link i { color: #0284c7; width: 24px; }
-        .nav-link.active i { color: #fff; }
-    </style>
-</head>
-<body>
-    <div class="sidebar d-flex flex-column p-3">
-        <div class="d-flex align-items-center mb-4 px-2">
-            <i class="fa-solid fa-brain fa-2x me-2" style="color: #0284c7;"></i>
-            <h5 class="fw-bold text-dark mb-0">ApexIntel AI</h5>
-        </div>
-        <ul class="nav nav-pills flex-column mb-auto">
-            <li><a href="{{ url_for('dashboard') }}" class="nav-link"><i class="fa-solid fa-chart-line"></i> Competitor Intel</a></li>
-            <li><a href="{{ url_for('special_feature') }}" class="nav-link"><i class="fa-solid fa-bolt"></i> Special Item Search</a></li>
-            <li><a href="{{ url_for('local_hub') }}" class="nav-link"><i class="fa-solid fa-store"></i> Local Hub Scan</a></li>
-            <li><a href="{{ url_for('archive_history') }}" class="nav-link"><i class="fa-solid fa-clock-rotate-left"></i> Intel History</a></li>
-            <li><a href="{{ url_for('support') }}" class="nav-link"><i class="fa-solid fa-circle-question"></i> Help & Support</a></li>
-            <li><a href="{{ url_for('profile') }}" class="nav-link active"><i class="fa-solid fa-user-gear"></i> Profile Settings</a></li>
-        </ul>
-        <div class="pt-3 border-top border-info">
-            <div class="small text-muted mb-2 text-truncate">{{ user_email }}</div>
-            <a href="{{ url_for('logout') }}" class="btn btn-outline-danger btn-sm w-100">Sign Out</a>
-        </div>
-    </div>
-
-    <div class="main-content">
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <div>
-                <h3 class="fw-bold text-dark">Account Profile Settings</h3>
-                <p class="text-muted small mb-0">Manage your credentials and billing node.</p>
-            </div>
-            <div class="d-flex align-items-center gap-2">
-                {% if is_paid %}
-                    <span class="badge bg-success p-2">Active Subscription ({{ days_remaining }} Days Left)</span>
-                {% else %}
-                    <span class="badge p-2 text-white" style="background: #0284c7;">Trial Period: {{ days_remaining }} Days Remaining</span>
-                    <a href="{{ paypal_link }}" target="_blank" class="btn btn-sm text-white fw-bold" style="background: #0284c7;">Upgrade ($70)</a>
-                    <button type="button" class="btn btn-sm btn-outline-dark fw-bold" data-bs-toggle="modal" data-bs-target="#paymentHelpModal">Paid With Different Email?</button>
-                {% endif %}
-            </div>
-        </div>
-
-        {% if success %}
-            <div class="alert alert-success py-2">{{ success }}</div>
-        {% endif %}
-        {% if error %}
-            <div class="alert alert-danger py-2">{{ error }}</div>
-        {% endif %}
-
-        <div class="card card-custom p-4 shadow-sm" style="max-width: 600px;">
-            <form method="POST">
-                <div class="mb-3">
-                    <label class="form-label text-muted small fw-bold">Email Address</label>
-                    <input type="email" name="email" class="form-control" value="{{ user_email }}" required>
-                </div>
-                <div class="mb-4">
-                    <label class="form-label text-muted small fw-bold">New Password (leave blank to keep current)</label>
-                    <input type="password" name="password" class="form-control" placeholder="••••••••">
-                </div>
-                <button type="submit" class="btn text-white fw-bold w-100" style="background: #0284c7;">Update Profile</button>
-            </form>
-        </div>
-    </div>
-    {{ payment_help_modal | safe }}
-    {{ sticker_popup | safe }}
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-</body>
-</html>
-"""
-
-TEMPLATE_DASHBOARD = """
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Competitor Intel - ApexIntel AI</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
-    <!-- Google Adsense Script -->
-    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4321543724878495"
-     crossorigin="anonymous"></script>
-    <style>
-        body { font-family: 'Inter', sans-serif; background: #ffffff; color: #1e293b; }
-        .sidebar { width: 260px; height: 100vh; position: fixed; background: #f1f5f9; border-right: 1px solid #e2e8f0; }
-        .main-content { margin-left: 260px; padding: 30px; }
-        .card-custom { background: #ffffff; border: 1px solid #cbd5e1; border-radius: 12px; }
-        .form-control { background: #f8fafc; border-color: #cbd5e1; color: #1e293b; }
-        .form-control:focus { background: #f8fafc; color: #1e293b; border-color: #ff1493; box-shadow: none; }
-        .nav-link { color: #64748b; font-weight: 500; border-radius: 8px; margin-bottom: 4px; }
-        .nav-link:hover, .nav-link.active { color: #fff; background: #ff1493; }
-        .nav-link i { color: #ff1493; width: 24px; }
-        .nav-link.active i { color: #fff; }
-    </style>
-</head>
-<body>
-    <div class="sidebar d-flex flex-column p-3">
-        <div class="d-flex align-items-center mb-4 px-2">
-            <i class="fa-solid fa-brain fa-2x me-2" style="color: #ff1493;"></i>
-            <h5 class="fw-bold text-dark mb-0">ApexIntel AI</h5>
-        </div>
-        <ul class="nav nav-pills flex-column mb-auto">
-            <li><a href="{{ url_for('dashboard') }}" class="nav-link active"><i class="fa-solid fa-chart-line"></i> Competitor Intel</a></li>
-            <li><a href="{{ url_for('special_feature') }}" class="nav-link"><i class="fa-solid fa-bolt"></i> Special Item Search</a></li>
-            <li><a href="{{ url_for('local_hub') }}" class="nav-link"><i class="fa-solid fa-store"></i> Local Hub Scan</a></li>
-            <li><a href="{{ url_for('archive_history') }}" class="nav-link"><i class="fa-solid fa-clock-rotate-left"></i> Intel History</a></li>
-            <li><a href="{{ url_for('support') }}" class="nav-link"><i class="fa-solid fa-circle-question"></i> Help & Support</a></li>
-            <li><a href="{{ url_for('profile') }}" class="nav-link"><i class="fa-solid fa-user-gear"></i> Profile Settings</a></li>
-        </ul>
-        <div class="pt-3 border-top border-light">
-            <div class="small text-muted mb-2 text-truncate">{{ user_email }}</div>
-            <a href="{{ url_for('logout') }}" class="btn btn-outline-danger btn-sm w-100">Sign Out</a>
-        </div>
-    </div>
-
-    <div class="main-content">
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <div>
-                <h3 class="fw-bold text-dark">Competitor Intelligence Feed</h3>
-                <p class="text-muted small mb-0">Real-time web mining and competitive pricing engine.</p>
-            </div>
-            <div class="d-flex align-items-center gap-2">
-                {% if is_paid %}
-                    <span class="badge bg-success p-2">Active Subscription ({{ days_remaining }} Days Left)</span>
-                {% else %}
-                    <span class="badge p-2 text-white" style="background: #ff1493;">Trial Period: {{ days_remaining }} Days Remaining</span>
-                    <a href="{{ paypal_link }}" target="_blank" class="btn btn-sm text-white fw-bold" style="background: #ff1493;">Upgrade ($70)</a>
-                    <button type="button" class="btn btn-sm btn-outline-secondary fw-bold" data-bs-toggle="modal" data-bs-target="#paymentHelpModal">Paid With Different Email?</button>
-                {% endif %}
-            </div>
-        </div>
-
-        <div class="card card-custom p-4 mb-4 shadow-sm">
-            <h5 class="fw-bold text-dark mb-3"><i class="fa-solid fa-chart-line me-2" style="color: #ff1493;"></i> Run Competitor Scan</h5>
-            <form method="POST" action="{{ url_for('run_search') }}" class="row g-3 mb-4">
-                <div class="col-md-9">
-                    <input type="text" name="companies" class="form-control" placeholder="Enter companies separated by comma (e.g. Nike, Jumia, Linear)" value="{{ saved_query }}" required>
-                </div>
-                <div class="col-md-3">
-                    <button type="submit" class="btn text-white fw-bold w-100" style="background: #ff1493;">Run Scanner</button>
-                </div>
-            </form>
-            {% if result_html %}
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                    <span class="text-muted small">Live Intelligence Matrix Results</span>
-                    <a href="{{ url_for('clear_company') }}" class="text-danger small text-decoration-none">Clear Results</a>
-                </div>
-                <div class="table-responsive rounded border border-light">{{ result_html | safe }}</div>
-            {% endif %}
-        </div>
-    </div>
-    {{ payment_help_modal | safe }}
-    {{ sticker_popup | safe }}
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-</body>
-</html>
-"""
-
-TEMPLATE_SPECIAL = """
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Special Item Search - ApexIntel AI</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
-    <!-- Google Adsense Script -->
-    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4321543724878495"
-     crossorigin="anonymous"></script>
-    <style>
-        body { font-family: 'Inter', sans-serif; background: #e0f2fe; color: #0f172a; }
-        .sidebar { width: 260px; height: 100vh; position: fixed; background: #bae6fd; border-right: 1px solid #7dd3fc; }
-        .main-content { margin-left: 260px; padding: 30px; }
-        .card-custom { background: #ffffff; border: 1px solid #7dd3fc; border-radius: 12px; }
-        .form-control { background: #f0f9ff; border-color: #bae6fd; color: #0f172a; }
-        .form-control:focus { background: #f0f9ff; color: #0f172a; border-color: #0284c7; box-shadow: none; }
-        .nav-link { color: #0369a1; font-weight: 500; border-radius: 8px; margin-bottom: 4px; }
-        .nav-link:hover, .nav-link.active { color: #fff; background: #0284c7; }
-        .nav-link i { color: #0284c7; width: 24px; }
-        .nav-link.active i { color: #fff; }
-    </style>
-</head>
-<body>
-    <div class="sidebar d-flex flex-column p-3">
-        <div class="d-flex align-items-center mb-4 px-2">
-            <i class="fa-solid fa-brain fa-2x me-2" style="color: #0284c7;"></i>
-            <h5 class="fw-bold text-dark mb-0">ApexIntel AI</h5>
-        </div>
-        <ul class="nav nav-pills flex-column mb-auto">
-            <li><a href="{{ url_for('dashboard') }}" class="nav-link"><i class="fa-solid fa-chart-line"></i> Competitor Intel</a></li>
-            <li><a href="{{ url_for('special_feature') }}" class="nav-link active"><i class="fa-solid fa-bolt"></i> Special Item Search</a></li>
-            <li><a href="{{ url_for('local_hub') }}" class="nav-link"><i class="fa-solid fa-store"></i> Local Hub Scan</a></li>
-            <li><a href="{{ url_for('archive_history') }}" class="nav-link"><i class="fa-solid fa-clock-rotate-left"></i> Intel History</a></li>
-            <li><a href="{{ url_for('support') }}" class="nav-link"><i class="fa-solid fa-circle-question"></i> Help & Support</a></li>
-            <li><a href="{{ url_for('profile') }}" class="nav-link"><i class="fa-solid fa-user-gear"></i> Profile Settings</a></li>
-        </ul>
-        <div class="pt-3 border-top border-info">
-            <div class="small text-muted mb-2 text-truncate">{{ user_email }}</div>
-            <a href="{{ url_for('logout') }}" class="btn btn-outline-danger btn-sm w-100">Sign Out</a>
-        </div>
-    </div>
-
-    <div class="main-content">
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <div>
-                <h3 class="fw-bold text-dark">Special Item & Area Search</h3>
-                <p class="text-muted small mb-0">Search for any item or product (e.g. cup) and your area to get results.</p>
-            </div>
-            <div class="d-flex align-items-center gap-2">
-                {% if is_paid %}
-                    <span class="badge bg-success p-2">Active Subscription ({{ days_remaining }} Days Left)</span>
-                {% else %}
-                    <span class="badge p-2 text-white" style="background: #0284c7;">Trial Period: {{ days_remaining }} Days Remaining</span>
-                    <a href="{{ paypal_link }}" target="_blank" class="btn btn-sm text-white fw-bold" style="background: #0284c7;">Upgrade ($70)</a>
-                    <button type="button" class="btn btn-sm btn-outline-primary fw-bold" data-bs-toggle="modal" data-bs-target="#paymentHelpModal">Paid With Different Email?</button>
-                {% endif %}
-            </div>
-        </div>
-
-        <div class="card card-custom p-4 mb-4 shadow-sm">
-            <h5 class="fw-bold text-dark mb-3"><i class="fa-solid fa-bolt me-2" style="color: #0284c7;"></i> Special Feature Search</h5>
-            <form method="POST" class="row g-3 mb-4">
-                <div class="col-md-6">
-                    <label class="form-label text-muted small fw-bold">Item / Object (e.g. cup)</label>
-                    <input type="text" name="item_query" class="form-control" placeholder="What are you searching for?" value="{{ saved_item_query }}" required>
-                </div>
-                <div class="col-md-4">
-                    <label class="form-label text-muted small fw-bold">Area / Location (e.g. Nairobi)</label>
-                    <input type="text" name="area_query" class="form-control" placeholder="Enter your area" value="{{ saved_area }}" required>
-                </div>
-                <div class="col-md-2 d-flex align-items-end">
-                    <button type="submit" class="btn text-white fw-bold w-100" style="background: #0284c7;">Search</button>
-                </div>
-            </form>
-            {% if special_result_html %}
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                    <span class="text-muted small">Special Search Results</span>
-                    <a href="{{ url_for('clear_general') }}" class="text-danger small text-decoration-none">Clear Results</a>
-                </div>
-                <div class="table-responsive rounded border border-info">{{ special_result_html | safe }}</div>
-            {% endif %}
-        </div>
-    </div>
-    {{ payment_help_modal | safe }}
-    {{ sticker_popup | safe }}
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-</body>
-</html>
-"""
-
-TEMPLATE_LOCAL_HUB = """
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Local Hub Scan - ApexIntel AI</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
-    <!-- Google Adsense Script -->
-    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4321543724878495"
-     crossorigin="anonymous"></script>
-    <style>
-        body { font-family: 'Inter', sans-serif; background: #ffffff; color: #1e293b; }
-        .sidebar { width: 260px; height: 100vh; position: fixed; background: #f1f5f9; border-right: 1px solid #e2e8f0; }
-        .main-content { margin-left: 260px; padding: 30px; }
-        .card-custom { background: #ffffff; border: 1px solid #cbd5e1; border-radius: 12px; }
-        .form-control { background: #f8fafc; border-color: #cbd5e1; color: #1e293b; }
-        .form-control:focus { background: #f8fafc; color: #1e293b; border-color: #333; box-shadow: none; }
-        .nav-link { color: #64748b; font-weight: 500; border-radius: 8px; margin-bottom: 4px; }
-        .nav-link:hover, .nav-link.active { color: #fff; background: #333333; }
-        .nav-link i { color: #333333; width: 24px; }
-        .nav-link.active i { color: #fff; }
-    </style>
-</head>
-<body>
-    <div class="sidebar d-flex flex-column p-3">
-        <div class="d-flex align-items-center mb-4 px-2">
-            <i class="fa-solid fa-brain fa-2x me-2" style="color: #333;"></i>
-            <h5 class="fw-bold text-dark mb-0">ApexIntel AI</h5>
-        </div>
-        <ul class="nav nav-pills flex-column mb-auto">
-            <li><a href="{{ url_for('dashboard') }}" class="nav-link"><i class="fa-solid fa-chart-line"></i> Competitor Intel</a></li>
-            <li><a href="{{ url_for('special_feature') }}" class="nav-link"><i class="fa-solid fa-bolt"></i> Special Item Search</a></li>
-            <li><a href="{{ url_for('local_hub') }}" class="nav-link active"><i class="fa-solid fa-store"></i> Local Hub Scan</a></li>
-            <li><a href="{{ url_for('archive_history') }}" class="nav-link"><i class="fa-solid fa-clock-rotate-left"></i> Intel History</a></li>
-            <li><a href="{{ url_for('support') }}" class="nav-link"><i class="fa-solid fa-circle-question"></i> Help & Support</a></li>
-            <li><a href="{{ url_for('profile') }}" class="nav-link"><i class="fa-solid fa-user-gear"></i> Profile Settings</a></li>
-        </ul>
-        <div class="pt-3 border-top border-light">
-            <div class="small text-muted mb-2 text-truncate">{{ user_email }}</div>
-            <a href="{{ url_for('logout') }}" class="btn btn-outline-danger btn-sm w-100">Sign Out</a>
-        </div>
-    </div>
-
-    <div class="main-content">
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <div>
-                <h3 class="fw-bold text-dark">Local Businesses Around</h3>
-                <p class="text-muted small mb-0">Scan regional and localized merchant inventories.</p>
-            </div>
-            <div class="d-flex align-items-center gap-2">
-                {% if is_paid %}
-                    <span class="badge bg-success p-2">Active Subscription ({{ days_remaining }} Days Left)</span>
-                {% else %}
-                    <span class="badge p-2 text-white" style="background: #333;">Trial Period: {{ days_remaining }} Days Remaining</span>
-                    <a href="{{ paypal_link }}" target="_blank" class="btn btn-sm text-white fw-bold" style="background: #333;">Upgrade ($70)</a>
-                    <button type="button" class="btn btn-sm btn-outline-dark fw-bold" data-bs-toggle="modal" data-bs-target="#paymentHelpModal">Paid With Different Email?</button>
-                {% endif %}
-            </div>
-        </div>
-
-        <div class="card card-custom p-4 mb-4 shadow-sm">
-            <h5 class="fw-bold text-dark mb-3"><i class="fa-solid fa-store me-2" style="color: #333;"></i> Run Local Hub Scan</h5>
-            <form method="POST" class="row g-3 mb-4">
-                <div class="col-md-9">
-                    <input type="text" name="location_query" class="form-control" placeholder="Enter location or region (e.g. Nairobi, Nakuru, Mombasa)" value="{{ saved_location }}" required>
-                </div>
-                <div class="col-md-3">
-                    <button type="submit" class="btn text-white fw-bold w-100" style="background: #333;">Scan Hub</button>
-                </div>
-            </form>
-            {% if nearby_result_html %}
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                    <span class="text-muted small">Local Scan Results</span>
-                    <a href="{{ url_for('clear_nearby') }}" class="text-danger small text-decoration-none">Clear Results</a>
-                </div>
-                <div class="table-responsive rounded border border-light">{{ nearby_result_html | safe }}</div>
-            {% endif %}
-        </div>
-    </div>
-    {{ payment_help_modal | safe }}
-    {{ sticker_popup | safe }}
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-</body>
-</html>
-"""
-
-TEMPLATE_ARCHIVE = """
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Intel History Archive - ApexIntel AI</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
-    <!-- Google Adsense Script -->
-    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4321543724878495"
-     crossorigin="anonymous"></script>
-    <style>
-        body { font-family: 'Inter', sans-serif; background: #000000; color: #f8fafc; }
-        .sidebar { width: 260px; height: 100vh; position: fixed; background: #111827; border-right: 1px solid #1f2937; }
-        .main-content { margin-left: 260px; padding: 30px; }
-        .card-custom { background: #1e293b; border: 1px solid #334155; border-radius: 12px; }
-        .nav-link { color: #94a3b8; font-weight: 500; border-radius: 8px; margin-bottom: 4px; }
-        .nav-link:hover, .nav-link.active { color: #fff; background: #ff1493; }
-        .nav-link i { color: #ff1493; width: 24px; }
-        .nav-link.active i { color: #fff; }
-    </style>
-</head>
-<body>
-    <div class="sidebar d-flex flex-column p-3">
-        <div class="d-flex align-items-center mb-4 px-2">
-            <i class="fa-solid fa-brain fa-2x me-2" style="color: #ff1493;"></i>
-            <h5 class="fw-bold text-white mb-0">ApexIntel AI</h5>
-        </div>
-        <ul class="nav nav-pills flex-column mb-auto">
-            <li><a href="{{ url_for('dashboard') }}" class="nav-link"><i class="fa-solid fa-chart-line"></i> Competitor Intel</a></li>
-            <li><a href="{{ url_for('special_feature') }}" class="nav-link"><i class="fa-solid fa-bolt"></i> Special Item Search</a></li>
-            <li><a href="{{ url_for('local_hub') }}" class="nav-link"><i class="fa-solid fa-store"></i> Local Hub Scan</a></li>
-            <li><a href="{{ url_for('archive_history') }}" class="nav-link active"><i class="fa-solid fa-clock-rotate-left"></i> Intel History</a></li>
-            <li><a href="{{ url_for('support') }}" class="nav-link"><i class="fa-solid fa-circle-question"></i> Help & Support</a></li>
-            <li><a href="{{ url_for('profile') }}" class="nav-link"><i class="fa-solid fa-user-gear"></i> Profile Settings</a></li>
-        </ul>
-        <div class="pt-3 border-top border-secondary">
-            <div class="small text-muted mb-2 text-truncate">{{ user_email }}</div>
-            <a href="{{ url_for('logout') }}" class="btn btn-outline-danger btn-sm w-100">Sign Out</a>
-        </div>
-    </div>
-
-    <div class="main-content">
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <div>
-                <h3 class="fw-bold text-white">Archived Intel</h3>
-                <p class="text-muted small mb-0">24-hour auto-refresh intelligence records.</p>
-            </div>
-            <div class="d-flex align-items-center gap-2">
-                {% if is_paid %}
-                    <span class="badge bg-success p-2">Active Subscription ({{ days_remaining }} Days Left)</span>
-                {% else %}
-                    <span class="badge p-2 text-white" style="background: #ff1493;">Trial Period: {{ days_remaining }} Days Remaining</span>
-                    <a href="{{ paypal_link }}" target="_blank" class="btn btn-sm text-white fw-bold" style="background: #ff1493;">Upgrade ($70)</a>
-                    <button type="button" class="btn btn-sm btn-outline-light fw-bold" data-bs-toggle="modal" data-bs-target="#paymentHelpModal">Paid With Different Email?</button>
-                {% endif %}
-            </div>
-        </div>
-
-        <div class="card card-custom p-4 mb-4">
-            <h5 class="fw-bold text-white mb-3"><i class="fa-solid fa-clock-rotate-left me-2" style="color: #ff1493;"></i> Archive Records</h5>
-            {% if history_items %}
-                {% for item in history_items %}
-                    <div class="border border-secondary p-3 rounded mb-3 bg-dark">
-                        <div class="d-flex justify-content-between align-items-center mb-2">
-                            <span class="fw-bold text-white">Target Query: <span style="color: #ff1493;">{{ item.company }}</span></span>
-                            <span class="text-muted small">Last Refreshed: {{ item.time }}</span>
-                        </div>
-                        <div class="table-responsive rounded border border-secondary">{{ item.html | safe }}</div>
-                    </div>
-                {% endfor %}
-            {% else %}
-                <p class="text-muted small mb-0">No archived history records found.</p>
-            {% endif %}
-        </div>
-    </div>
-    {{ payment_help_modal | safe }}
-    {{ sticker_popup | safe }}
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-</body>
-</html>
-"""
-
-TEMPLATE_SUPPORT = """
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Help & Support - ApexIntel AI</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
-    <!-- Google Adsense Script -->
-    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4321543724878495"
-     crossorigin="anonymous"></script>
-    <style>
-        body { font-family: 'Inter', sans-serif; background: #ffffff; color: #1e293b; }
-        .sidebar { width: 260px; height: 100vh; position: fixed; background: #f1f5f9; border-right: 1px solid #e2e8f0; }
-        .main-content { margin-left: 260px; padding: 30px; }
-        .card-custom { background: #ffffff; border: 1px solid #cbd5e1; border-radius: 12px; }
-        .form-control { background: #f8fafc; border-color: #cbd5e1; color: #1e293b; }
-        .form-control:focus { background: #f8fafc; color: #1e293b; border-color: #ff1493; box-shadow: none; }
-        .nav-link { color: #64748b; font-weight: 500; border-radius: 8px; margin-bottom: 4px; }
-        .nav-link:hover, .nav-link.active { color: #fff; background: #ff1493; }
-        .nav-link i { color: #ff1493; width: 24px; }
-        .nav-link.active i { color: #fff; }
-    </style>
-</head>
-<body>
-    <div class="sidebar d-flex flex-column p-3">
-        <div class="d-flex align-items-center mb-4 px-2">
-            <i class="fa-solid fa-brain fa-2x me-2" style="color: #ff1493;"></i>
-            <h5 class="fw-bold text-dark mb-0">ApexIntel AI</h5>
-        </div>
-        <ul class="nav nav-pills flex-column mb-auto">
-            <li><a href="{{ url_for('dashboard') }}" class="nav-link"><i class="fa-solid fa-chart-line"></i> Competitor Intel</a></li>
-            <li><a href="{{ url_for('special_feature') }}" class="nav-link"><i class="fa-solid fa-bolt"></i> Special Item Search</a></li>
-            <li><a href="{{ url_for('local_hub') }}" class="nav-link"><i class="fa-solid fa-store"></i> Local Hub Scan</a></li>
-            <li><a href="{{ url_for('archive_history') }}" class="nav-link"><i class="fa-solid fa-clock-rotate-left"></i> Intel History</a></li>
-            <li><a href="{{ url_for('support') }}" class="nav-link active"><i class="fa-solid fa-circle-question"></i> Help & Support</a></li>
-            <li><a href="{{ url_for('profile') }}" class="nav-link"><i class="fa-solid fa-user-gear"></i> Profile Settings</a></li>
-        </ul>
-        <div class="pt-3 border-top border-light">
-            <div class="small text-muted mb-2 text-truncate">{{ user_email }}</div>
-            <a href="{{ url_for('logout') }}" class="btn btn-outline-danger btn-sm w-100">Sign Out</a>
-        </div>
-    </div>
-
-    <div class="main-content">
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <div>
-                <h3 class="fw-bold text-dark">Help & Support</h3>
-                <p class="text-muted small mb-0">Get direct assistance and support tickets.</p>
-            </div>
-            <div class="d-flex align-items-center gap-2">
-                {% if is_paid %}
-                    <span class="badge bg-success p-2">Active Subscription ({{ days_remaining }} Days Left)</span>
-                {% else %}
-                    <span class="badge p-2 text-white" style="background: #ff1493;">Trial Period: {{ days_remaining }} Days Remaining</span>
-                    <a href="{{ paypal_link }}" target="_blank" class="btn btn-sm text-white fw-bold" style="background: #ff1493;">Upgrade ($70)</a>
-                    <button type="button" class="btn btn-sm btn-outline-secondary fw-bold" data-bs-toggle="modal" data-bs-target="#paymentHelpModal">Paid With Different Email?</button>
-                {% endif %}
-            </div>
-        </div>
-
-        {% if success %}
-            <div class="alert alert-success py-2">{{ success }}</div>
-        {% endif %}
-
-        <div class="card card-custom p-4 shadow-sm">
-            <h5 class="fw-bold text-dark mb-3"><i class="fa-solid fa-circle-question me-2" style="color: #ff1493;"></i> Contact Support</h5>
-            <p class="text-muted small">Need direct assistance or technical help? Reach out to support at <b>{{ help_email }}</b> or submit a direct help ticket below.</p>
-            <form method="POST">
-                <div class="mb-3">
-                    <textarea name="message" class="form-control" rows="3" placeholder="Describe your issue or request..." required></textarea>
-                </div>
-                <button type="submit" class="btn text-white fw-bold" style="background: #ff1493;">Submit Support Ticket</button>
-            </form>
-        </div>
-    </div>
-    {{ payment_help_modal | safe }}
-    {{ sticker_popup | safe }}
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-</body>
-</html>
-"""
-TEMPLATE_PUBLIC_HOME = """
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ApexIntel AI - Market & Competitor Intelligence Suite</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-
-    <!-- Google AdSense Verification Script -->
-    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4321543724878495"
-         crossorigin="anonymous"></script>
-
-    <style>
-        body { background: #f8fafc; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #333; }
-        .hero-section { background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: white; padding: 80px 0; }
-        .btn-brand { background: #ff1493; color: white; font-weight: bold; border-radius: 8px; }
-        .btn-brand:hover { background: #e01082; color: white; }
-        .card-custom { border: none; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.04); background: #ffffff; }
-    </style>
-</head>
-<body>
-    <!-- Public Navbar -->
-    <nav class="navbar navbar-expand-lg navbar-light bg-white border-bottom py-3">
-        <div class="container">
-            <a class="navbar-brand fw-bold" href="{{ url_for('public_home') }}" style="color: #ff1493;">
-                <i class="fa-solid fa-chart-line me-2"></i>ApexIntel AI
-            </a>
-            <div class="ms-auto">
-                <a href="{{ url_for('login') }}" class="btn btn-outline-dark btn-sm me-2 fw-bold">Sign In</a>
-                <a href="{{ url_for('signup') }}" class="btn btn-brand btn-sm px-3">Get Started</a>
-            </div>
-        </div>
-    </nav>
-
-    <!-- Hero Section -->
-    <header class="hero-section text-center">
-        <div class="container">
-            <h1 class="display-4 fw-bold mb-3">Autonomous Market & Competitor Intelligence</h1>
-            <p class="lead text-muted mb-4" style="color: #94a3b8 !important;">Track live competitor prices, scan local business hubs, and analyze market trends instantly with AI.</p>
-            <a href="{{ url_for('signup') }}" class="btn btn-brand btn-lg px-5 py-3 shadow">Start Free Trial</a>
-        </div>
-    </header>
-
-    <!-- AdSense Ad Unit Placement on Public Homepage -->
-    <div class="container my-5 text-center">
-        <div class="p-4 bg-white border rounded shadow-sm">
-            <span class="text-muted small d-block mb-2">Advertisement</span>
-            <ins class="adsbygoogle"
-                 style="display:block"
-                 data-ad-client="ca-pub-4321543724878495"
-                 data-ad-slot="1234567890"
-                 data-ad-format="auto"
-                 data-full-width-responsive="true"></ins>
-            <script>
-                 (adsbygoogle = window.adsbygoogle || []).push({});
-            </script>
-        </div>
-    </div>
-
-    <!-- Features Overview -->
-    <section class="container py-5">
-        <div class="row g-4">
-            <div class="col-md-4">
-                <div class="card card-custom p-4 h-100">
-                    <i class="fa-solid fa-store fa-2x mb-3" style="color: #ff1493;"></i>
-                    <h5 class="fw-bold">Competitor Intel</h5>
-                    <p class="text-muted small">Monitor real-time competitor storefront pricing and inventory status dynamically.</p>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="card card-custom p-4 h-100">
-                    <i class="fa-solid fa-crosshairs fa-2x mb-3" style="color: #0284c7;"></i>
-                    <h5 class="fw-bold">Special Feature</h5>
-                    <p class="text-muted small">Pinpoint specific items and merchandise searches across precise geographic regions.</p>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="card card-custom p-4 h-100">
-                    <i class="fa-solid fa-shop fa-2x mb-3" style="color: #ff1493;"></i>
-                    <h5 class="fw-bold">Local Hub Scan</h5>
-                    <p class="text-muted small">Discover active local merchants, goods produced, and commercial hubs instantly.</p>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Public Footer -->
-    <footer class="bg-white border-top py-4 mt-5 text-center text-muted small">
-        <div class="container">
-            <div class="mb-2">
-                <a href="{{ url_for('public_home') }}" class="text-decoration-none text-muted me-3">Home</a>
-                <a href="{{ url_for('about_page') }}" class="text-decoration-none text-muted me-3">About Us</a>
-                <a href="{{ url_for('privacy_policy') }}" class="text-decoration-none text-muted me-3">Privacy Policy</a>
-                <a href="{{ url_for('terms_conditions') }}" class="text-decoration-none text-muted">Terms & Conditions</a>
-            </div>
-            <p class="m-0">&copy; 2026 ApexIntel AI. All rights reserved.</p>
-        </div>
-    </footer>
-</body>
-</html>
-"""
-
-TEMPLATE_INFO_PAGES = """
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ title }} - ApexIntel AI</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-
-    <!-- Google AdSense Verification Script -->
-    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4321543724878495"
-         crossorigin="anonymous"></script>
-
-    <style>
-        body { background: #f8fafc; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #333; }
-        .card-custom { border: none; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.04); background: #ffffff; }
-    </style>
-</head>
-<body>
-    <nav class="navbar navbar-expand-lg navbar-light bg-white border-bottom py-3">
-        <div class="container">
-            <a class="navbar-brand fw-bold" href="{{ url_for('public_home') }}" style="color: #ff1493;">
-                <i class="fa-solid fa-chart-line me-2"></i>ApexIntel AI
-            </a>
-            <div class="ms-auto">
-                <a href="{{ url_for('public_home') }}" class="btn btn-outline-dark btn-sm me-2">Home</a>
-                <a href="{{ url_for('login') }}" class="btn btn-dark btn-sm">Sign In</a>
-            </div>
-        </div>
-    </nav>
-
-    <div class="container py-5" style="max-width: 800px;">
-        <div class="card card-custom p-5">
-            <h2 class="fw-bold mb-4" style="color: #ff1493;">{{ title }}</h2>
-            <div class="text-muted" style="line-height: 1.8;">
-                {{ content | safe }}
-            </div>
-        </div>
-    </div>
-
-    <footer class="bg-white border-top py-4 text-center text-muted small mt-5">
-        <div class="container">
-            <a href="{{ url_for('public_home') }}" class="text-decoration-none text-muted me-3">Home</a>
-            <a href="{{ url_for('about_page') }}" class="text-decoration-none text-muted me-3">About Us</a>
-            <a href="{{ url_for('privacy_policy') }}" class="text-decoration-none text-muted me-3">Privacy Policy</a>
-            <a href="{{ url_for('terms_conditions') }}" class="text-decoration-none text-muted">Terms & Conditions</a>
-            <p class="mt-2 m-0">&copy; 2026 ApexIntel AI. All rights reserved.</p>
-        </div>
-    </footer>
-</body>
-</html>
-"""
 if __name__ == "__main__":
-    app.run(debug=True, port=5000)
+    app.run(host="0.0.0.0", port=5000)
