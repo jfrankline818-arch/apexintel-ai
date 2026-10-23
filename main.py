@@ -477,6 +477,15 @@ TEMPLATE_INFO_PAGES = """
 """
 
 
+# --- TEMPLATE DEFINITIONS ---
+TEMPLATE_PUBLIC_HOME = "<h1>Welcome to ApexIntel AI</h1><p><a href='/login'>Login</a> | <a href='/signup'>Sign Up</a></p>"
+TEMPLATE_AUTH = "<h3>Authentication</h3><p>{{ error }}</p><form method='POST'>Email: <input name='email'><br>Password: <input type='password' name='password'><br><button type='submit'>Submit</button></form>"
+TEMPLATE_DASHBOARD = "<h2>Dashboard</h2><form method='POST' action='/run'>Companies: <input name='companies'><button type='submit'>Run</button></form><div>{{ result_html | safe }}</div>"
+TEMPLATE_SPECIAL = "<h2>Special Search</h2><form method='POST'>Item: <input name='item_query'> Area: <input name='area_query'><button type='submit'>Search</button></form><div>{{ special_result_html | safe }}</div>"
+TEMPLATE_LOCAL_HUB = "<h2>Local Hub</h2><form method='POST'>Location: <input name='location_query'><button type='submit'>Scan</button></form><div>{{ nearby_result_html | safe }}</div>"
+TEMPLATE_ARCHIVE = "<h2>Archive History</h2>{% for item in history_items %}<div>{{ item.company }} - {{ item.time }}<br>{{ item.html | safe }}</div>{% endfor %}"
+TEMPLATE_PROFILE = "<h2>Profile</h2><form method='POST'>New Email: <input name='email'><br>New Password: <input type='password' name='password'><button type='submit'>Update</button></form>"
+TEMPLATE_SUPPORT = "<h2>Support</h2><form method='POST'>Message: <textarea name='message'></textarea><button type='submit'>Send</button></form>"
 # --- ROUTES ---
 
 @app.route("/")
